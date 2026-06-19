@@ -8,7 +8,8 @@ from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
 
 # Config
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+SCOPES = ['https://www.googleapis.com/auth/drive']
+#SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 CREDENTIALS_FILE = 'gdrive_credentials.json'
 QUEUE_FOLDER_NAME = 'upload_queue'
 UPLOADED_FOLDER_NAME = 'uploaded'
