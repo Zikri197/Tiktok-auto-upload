@@ -47,12 +47,16 @@ def do_upload(video_path, caption):
             import nest_asyncio
             nest_asyncio.apply()
             
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
             upload_video(
                 str(video_path),
                 description=caption[:2200],
                 cookies=f"sessionid={SESSION_ID}",
                 browser="chrome"
             )
+            loop.close()
             return True, ""
         except Exception as e:
             last_error = str(e)
@@ -60,8 +64,7 @@ def do_upload(video_path, caption):
             
             if "429" in last_error or "rate limit" in last_error.lower():
                 print(f"   ⏳ Rate limit, jeda {RATE_LIMIT_PAUSE//60} menit...")
-                if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-                    send_telegram("⚠️ Rate limit TikTok, jeda 30 menit.")
+                send_telegram("⚠️ Rate limit, jeda 30 menit.")
                 time.sleep(RATE_LIMIT_PAUSE)
                 continue
             
