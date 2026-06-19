@@ -1,6 +1,6 @@
+tiktok-uploader
 requests
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
-TikTokApi
-nest_asyncio
+nest-asyncio
