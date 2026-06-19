@@ -1,7 +1,7 @@
 # ============================================================
-# UPLOAD KE TIKTOK (GITHUB ACTIONS) - FIXED
+# UPLOAD KE TIKTOK - TANPA PLAYWRIGHT
 # ============================================================
-import os, time, random, requests
+import os, time, random, requests, hashlib, json
 from pathlib import Path
 from datetime import datetime
 
@@ -21,6 +21,8 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 CLIP_DIR = Path("clips")
 LOG_FILE = Path("upload_log.txt")
 
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
 def send_telegram(msg):
     if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
         try:
@@ -33,51 +35,81 @@ def send_telegram(msg):
             pass
 
 # ============================================================
-# UPLOAD VIA TIKTOK API LANGSUNG (REQUESTS)
+# UPLOAD VIA TIKTOK API (REQUESTS ONLY)
 # ============================================================
 def do_upload(video_path, caption):
+    session = requests.Session()
+    session.cookies.set("sessionid", SESSION_ID, domain=".tiktok.com")
+    session.headers.update({"User-Agent": USER_AGENT})
+    
     last_error = ""
     for attempt in range(1, MAX_RETRIES+1):
         try:
-            # Gunakan tiktok-uploader dengan cara yang benar
-            from tiktok_uploader.upload import upload_video
-            import asyncio
+            # Step 1: Dapatkan upload URL
+            video_size = os.path.getsize(video_path)
+            video_name = video_path.name
             
-            # Buat event loop baru
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            init_url = "https://www.tiktok.com/api/v1/video/upload/auth/"
+            init_resp = session.post(init_url, json={
+                "video_size": video_size,
+                "video_name": video_name,
+                "source": "tiktok_web"
+            })
             
-            try:
-                upload_video(
-                    str(video_path),
-                    description=caption[:2200],
-                    cookies=f"sessionid={SESSION_ID}",
-                    browser="chrome"
-                )
+            if init_resp.status_code != 200:
+                last_error = f"Init failed: {init_resp.text[:100]}"
+                if "session" in last_error.lower():
+                    return False, "SESSION_EXPIRED"
+                continue
+            
+            init_data = init_resp.json()
+            upload_url = init_data.get("upload_url", "")
+            
+            if not upload_url:
+                last_error = "No upload URL"
+                continue
+            
+            # Step 2: Upload video
+            with open(video_path, "rb") as f:
+                upload_resp = session.put(upload_url, data=f, headers={
+                    "Content-Type": "video/mp4",
+                    "Content-Length": str(video_size)
+                })
+            
+            if upload_resp.status_code not in [200, 201, 204]:
+                last_error = f"Upload failed: {upload_resp.text[:100]}"
+                continue
+            
+            # Step 3: Finalize
+            finalize_url = "https://www.tiktok.com/api/v1/video/upload/finalize/"
+            finalize_resp = session.post(finalize_url, json={
+                "video_name": video_name,
+                "video_size": video_size,
+                "description": caption[:2200],
+                "privacy_type": "public"
+            })
+            
+            if finalize_resp.status_code == 200:
+                print("   ✅ Upload berhasil!")
                 return True, ""
-            finally:
-                loop.close()
+            else:
+                last_error = f"Finalize failed: {finalize_resp.text[:100]}"
                 
         except Exception as e:
             last_error = str(e)
             print(f"   ❌ Attempt {attempt}: {last_error[:100]}")
-            
-            if "429" in last_error or "rate limit" in last_error.lower():
-                print(f"   ⏳ Rate limit, jeda {RATE_LIMIT_PAUSE//60} menit...")
-                send_telegram("⚠️ Rate limit, jeda 30 menit.")
-                time.sleep(RATE_LIMIT_PAUSE)
-                continue
-            
-            if "session" in last_error.lower() or "auth" in last_error.lower():
-                return False, "SESSION_EXPIRED"
-            
-            if "Playwright" in last_error or "asyncio" in last_error:
-                print(f"   🔄 Error event loop, coba ulang...")
-                time.sleep(5)
-                continue
-            
-            if attempt < MAX_RETRIES:
-                time.sleep(10)
+        
+        if "429" in last_error or "rate limit" in last_error.lower():
+            print(f"   ⏳ Rate limit, jeda {RATE_LIMIT_PAUSE//60} menit...")
+            send_telegram("⚠️ Rate limit, jeda 30 menit.")
+            time.sleep(RATE_LIMIT_PAUSE)
+            continue
+        
+        if "session" in last_error.lower() or "auth" in last_error.lower():
+            return False, "SESSION_EXPIRED"
+        
+        if attempt < MAX_RETRIES:
+            time.sleep(10)
     
     return False, last_error
 
