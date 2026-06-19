@@ -43,10 +43,14 @@ def do_upload(video_path, caption):
     last_error = ""
     for attempt in range(1, MAX_RETRIES+1):
         try:
+            import asyncio
+            import nest_asyncio
+            nest_asyncio.apply()
+            
             upload_video(
                 str(video_path),
                 description=caption[:2200],
-                cookies=f"sessionid={SESSION_ID}",
+                cookies=f"sessionid={session_id}",
                 browser="chrome"
             )
             return True, ""
@@ -56,7 +60,8 @@ def do_upload(video_path, caption):
             
             if "429" in last_error or "rate limit" in last_error.lower():
                 print(f"   ⏳ Rate limit, jeda {RATE_LIMIT_PAUSE//60} menit...")
-                send_telegram("⚠️ Rate limit TikTok, jeda 30 menit.")
+                if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
+                    send_telegram("⚠️ Rate limit TikTok, jeda 30 menit.")
                 time.sleep(RATE_LIMIT_PAUSE)
                 continue
             
@@ -67,7 +72,6 @@ def do_upload(video_path, caption):
                 time.sleep(10)
     
     return False, last_error
-
 # ============================================================
 # MAIN
 # ============================================================
