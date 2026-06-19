@@ -1,18 +1,14 @@
-print('baris pertama script')
-
-
 # ============================================================
-# UPLOAD KE TIKTOK - VIA CLI (NO PLAYWRIGHT CONFLICT)
+# UPLOAD KE TIKTOK - VIA COOKIES FILE
 # ============================================================
-import os, time, random, requests, subprocess, json
+import os, time, random, requests, subprocess
 from pathlib import Path
 from datetime import datetime
-
 
 # ============================================================
 # KONFIGURASI
 # ============================================================
-SESSION_ID = os.environ.get("TIKTOK_SESSION_ID", "")
+COOKIES_FILE = "tiktok_cookies.txt"
 MAX_UPLOAD = 5
 DELAY_MIN = 80 * 60
 DELAY_MAX = 100 * 60
@@ -24,16 +20,6 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 CLIP_DIR = Path("clips")
 LOG_FILE = Path("upload_log.txt")
-print('tez')
-print("=" * 50)
-print("SCRIPT MULAI")
-print("=" * 50)
-print(f"CLIP_DIR: {CLIP_DIR}")
-print(f"CLIP_DIR exists: {CLIP_DIR.exists()}")
-print(f"Files in CLIP_DIR: {list(CLIP_DIR.glob('*')) if CLIP_DIR.exists() else 'N/A'}")
-
-
-
 
 def send_telegram(msg):
     if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
@@ -47,35 +33,26 @@ def send_telegram(msg):
             pass
 
 # ============================================================
-# UPLOAD VIA CLI
+# UPLOAD VIA COOKIES FILE
 # ============================================================
 def do_upload(video_path, caption):
     last_error = ""
     for attempt in range(1, MAX_RETRIES+1):
         try:
-            # Simpan caption ke file temporary
-            caption_file = video_path.with_suffix(".caption.txt")
-            with open(caption_file, "w") as f:
-                f.write(caption[:2200])
-            
-            # Jalankan tiktok-uploader via command line
             result = subprocess.run([
                 "python", "-m", "tiktok_uploader.cli",
                 "--video", str(video_path),
                 "--description", caption[:2200],
-                "--cookies", f"sessionid={SESSION_ID}",
-                "--browser", "chrome"
+                "--cookies-file", COOKIES_FILE,
             ], capture_output=True, text=True, timeout=120)
             
-            # Bersihkan file caption
-            if caption_file.exists():
-                os.remove(caption_file)
+            print(f"   stdout: {result.stdout[:200]}")
+            print(f"   stderr: {result.stderr[:200]}")
             
-            if result.returncode == 0:
+            if result.returncode == 0 and "error" not in result.stderr.lower():
                 return True, ""
             else:
                 last_error = result.stderr or result.stdout
-                last_error = last_error[:200]
                 
         except Exception as e:
             last_error = str(e)
@@ -99,10 +76,14 @@ def do_upload(video_path, caption):
 # ============================================================
 # MAIN
 # ============================================================
-
 if not CLIP_DIR.exists():
     print("❌ Folder clips tidak ada.")
     send_telegram("❌ Upload gagal: folder clips tidak ditemukan.")
+    exit()
+
+if not Path(COOKIES_FILE).exists():
+    print("❌ Cookies file tidak ditemukan.")
+    send_telegram("❌ Upload gagal: cookies file tidak ada.")
     exit()
 
 videos = sorted(CLIP_DIR.glob("*.mp4"))
