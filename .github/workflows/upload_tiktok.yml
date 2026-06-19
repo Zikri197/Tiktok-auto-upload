@@ -33,21 +33,12 @@ jobs:
         run: |
           python download_from_drive.py
 
-      - name: Debug - Cek file
-        run: |
-          echo "=== Isi folder saat ini ==="
-          ls -la
-          echo ""
-          echo "=== Isi folder clips/ ==="
-          ls -la clips/ 2>/dev/null || echo "Folder clips/ tidak ada"
-          echo ""
-          echo "=== 5 baris pertama upload_script.py ==="
-          head -5 upload_script.py 2>/dev/null || echo "File upload_script.py tidak ditemukan"
-
       - name: Upload ke TikTok
         env:
           TIKTOK_SESSION_ID: ${{ secrets.TIKTOK_SESSION_ID }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python upload_script.py
+          echo "Mulai upload..."
+          python -u upload_script.py
+          echo "Selesai upload. Exit code: $?"
