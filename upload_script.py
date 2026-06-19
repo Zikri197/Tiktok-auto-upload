@@ -1,10 +1,9 @@
 # ============================================================
-# UPLOAD KE TIKTOK (GITHUB ACTIONS) - TIKTOKAPI VERSION
+# UPLOAD KE TIKTOK (GITHUB ACTIONS) - FIXED
 # ============================================================
-import os, time, random, requests, json
+import os, time, random, requests
 from pathlib import Path
 from datetime import datetime
-from TikTokApi import TikTokApi
 
 # ============================================================
 # KONFIGURASI
@@ -33,28 +32,48 @@ def send_telegram(msg):
         except:
             pass
 
+# ============================================================
+# UPLOAD VIA TIKTOK API LANGSUNG (REQUESTS)
+# ============================================================
 def do_upload(video_path, caption):
     last_error = ""
     for attempt in range(1, MAX_RETRIES+1):
         try:
-            api = TikTokApi.get_instance(custom_verifyFp="")
-            api.upload_video(
-                str(video_path),
-                description=caption[:2200],
-                session_id=SESSION_ID
-            )
-            return True, ""
+            # Gunakan tiktok-uploader dengan cara yang benar
+            from tiktok_uploader.upload import upload_video
+            import asyncio
+            
+            # Buat event loop baru
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            try:
+                upload_video(
+                    str(video_path),
+                    description=caption[:2200],
+                    cookies=f"sessionid={SESSION_ID}",
+                    browser="chrome"
+                )
+                return True, ""
+            finally:
+                loop.close()
+                
         except Exception as e:
             last_error = str(e)
             print(f"   ❌ Attempt {attempt}: {last_error[:100]}")
             
-            if "session" in last_error.lower() or "auth" in last_error.lower():
-                return False, "SESSION_EXPIRED"
-            
-            if "429" in last_error.lower() or "rate limit" in last_error.lower():
+            if "429" in last_error or "rate limit" in last_error.lower():
                 print(f"   ⏳ Rate limit, jeda {RATE_LIMIT_PAUSE//60} menit...")
                 send_telegram("⚠️ Rate limit, jeda 30 menit.")
                 time.sleep(RATE_LIMIT_PAUSE)
+                continue
+            
+            if "session" in last_error.lower() or "auth" in last_error.lower():
+                return False, "SESSION_EXPIRED"
+            
+            if "Playwright" in last_error or "asyncio" in last_error:
+                print(f"   🔄 Error event loop, coba ulang...")
+                time.sleep(5)
                 continue
             
             if attempt < MAX_RETRIES:
@@ -107,6 +126,7 @@ for i, video_path in enumerate(to_upload, 1):
         caption += " #fyp #viral"
     
     print(f"\n📤 {i}/{len(to_upload)}: {video_path.name}")
+    print(f"   {datetime.now().strftime('%H:%M:%S')}")
     
     ok, err = do_upload(video_path, caption)
     
@@ -118,13 +138,16 @@ for i, video_path in enumerate(to_upload, 1):
     else:
         print(f"   ❌ Gagal: {err[:100]}")
         send_telegram(f"❌ {video_path.name}: {err[:200]}")
+        
         if err == "SESSION_EXPIRED":
+            print("⛔ Session expired.")
+            send_telegram("⛔ Session expired, upload dihentikan.")
             break
     
     if i < len(to_upload):
         delay = random.randint(DELAY_MIN, DELAY_MAX)
-        print(f"   ⏳ Jeda {delay//60}m...")
+        print(f"   ⏳ Jeda {delay//60}m {delay%60}s...")
         time.sleep(delay)
 
-print("\n✅ Selesai.")
+print("\n✅ Sesi upload selesai.")
 send_telegram("✅ Sesi upload selesai.")
