@@ -5,12 +5,6 @@ import os, time, random, requests, subprocess, json
 from pathlib import Path
 from datetime import datetime
 
-print("=" * 50)
-print("SCRIPT MULAI")
-print("=" * 50)
-print(f"CLIP_DIR: {CLIP_DIR}")
-print(f"CLIP_DIR exists: {CLIP_DIR.exists()}")
-print(f"Files in CLIP_DIR: {list(CLIP_DIR.glob('*')) if CLIP_DIR.exists() else 'N/A'}")
 
 # ============================================================
 # KONFIGURASI
@@ -27,6 +21,14 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 CLIP_DIR = Path("clips")
 LOG_FILE = Path("upload_log.txt")
+print('tez')
+print("=" * 50)
+print("SCRIPT MULAI")
+print("=" * 50)
+print(f"CLIP_DIR: {CLIP_DIR}")
+print(f"CLIP_DIR exists: {CLIP_DIR.exists()}")
+print(f"Files in CLIP_DIR: {list(CLIP_DIR.glob('*')) if CLIP_DIR.exists() else 'N/A'}")
+
 
 
 
