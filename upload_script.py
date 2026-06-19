@@ -50,7 +50,7 @@ def do_upload(video_path, caption):
             upload_video(
                 str(video_path),
                 description=caption[:2200],
-                cookies=f"sessionid={session_id}",
+                cookies=f"sessionid={SESSION_ID}",
                 browser="chrome"
             )
             return True, ""
