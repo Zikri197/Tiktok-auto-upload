@@ -2,8 +2,8 @@ name: Auto Upload TikTok
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Jam 07:00 WIB
-  workflow_dispatch:       # Bisa trigger manual
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   upload:
@@ -11,19 +11,43 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - run: pip install -r requirements.txt
-      - name: Setup Google Drive
+
+      - name: Install dependensi
+        run: |
+          pip install -r requirements.txt
+
+      - name: Setup Google Drive credentials
         env:
           GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_CREDENTIALS }}
-        run: echo "$GDRIVE_CREDENTIALS" > gdrive_credentials.json
-      - run: python download_from_drive.py
-      - name: Upload TikTok
+        run: |
+          echo "$GDRIVE_CREDENTIALS" > gdrive_credentials.json
+
+      - name: Download video dari Google Drive
+        run: |
+          python download_from_drive.py
+
+      - name: Debug - Cek file
+        run: |
+          echo "=== Isi folder saat ini ==="
+          ls -la
+          echo ""
+          echo "=== Isi folder clips/ ==="
+          ls -la clips/ 2>/dev/null || echo "Folder clips/ tidak ada"
+          echo ""
+          echo "=== 5 baris pertama upload_script.py ==="
+          head -5 upload_script.py 2>/dev/null || echo "File upload_script.py tidak ditemukan"
+
+      - name: Upload ke TikTok
         env:
           TIKTOK_SESSION_ID: ${{ secrets.TIKTOK_SESSION_ID }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python upload_script.py
+        run: |
+          python upload_script.py
