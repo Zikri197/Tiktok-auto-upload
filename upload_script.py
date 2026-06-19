@@ -1,3 +1,6 @@
+print('baris pertama script')
+
+
 # ============================================================
 # UPLOAD KE TIKTOK - VIA CLI (NO PLAYWRIGHT CONFLICT)
 # ============================================================
