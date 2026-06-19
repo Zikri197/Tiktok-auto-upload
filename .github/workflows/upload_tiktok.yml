@@ -35,10 +35,7 @@ jobs:
 
       - name: Upload ke TikTok
         env:
-          TIKTOK_SESSION_ID: ${{ secrets.TIKTOK_SESSION_ID }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          echo "Mulai upload..."
           python -u upload_script.py
-          echo "Selesai upload. Exit code: $?"
